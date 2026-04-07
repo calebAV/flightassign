@@ -99,3 +99,4 @@ Go to the repo's **Actions** tab → **ATL Flight Assignments** → **Run workfl
 - GitHub Actions cron can have up to ~5 minutes of delay — this is normal
 - The free tier of GitHub Actions gives you 2,000 minutes/month. This automation uses ~4 min/day = ~80 min/month, well within limits
 - If you need to stop the automation temporarily, go to Actions → click the workflow → three dots menu → **Disable workflow**
+
