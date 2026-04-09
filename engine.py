@@ -258,7 +258,7 @@ def run_assignments(flights, operators, previous_flights):
 
         chosen["flights"].append(fl)
         chosen["flight_count"] += 1
-        chosen["next_avail"] = haulout + timedelta(minutes=20)
+        chosen["next_avail"] = haulout + timedelta(minutes=15)
 
         # If next_avail falls during break, push to break end
         if chosen["break_start_dt"] <= chosen["next_avail"] < chosen["break_end_dt"]:
