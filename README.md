@@ -68,7 +68,7 @@ Edit `engine.py` and push to `main`. Changes take effect on the next scheduled r
 Key sections to know:
 - **Break times**: `SHIFT1_BREAKS` and `SHIFT2_BREAKS` at the top of the file
 - **Gate filter**: `GATE_PATTERN` regex — controls which gates are in scope
-- **Spacing constraint**: Search for `timedelta(minutes=20)` in `run_assignments()`
+- **Spacing constraint**: Search for `timedelta(minutes=15)` in `run_assignments()`
 - **Haulout offset**: Search for `timedelta(minutes=50)` — this is contractual, don't change it
 
 ### Change schedule timing
