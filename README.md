@@ -66,10 +66,11 @@ Post a new `WEEKLY_SCHEDULE_JSON` message to `#flight-assign` in Slack — same 
 Edit `engine.py` and push to `main`. Changes take effect on the next scheduled run (within 15 minutes).
 
 Key sections to know:
-- **Break times**: `SHIFT1_BREAKS` and `SHIFT2_BREAKS` at the top of the file
 - **Gate filter**: `GATE_PATTERN` regex — controls which gates are in scope
-- **Spacing constraint**: Search for `timedelta(minutes=15)` in `run_assignments()`
+- **Spacing constraint**: Search for `timedelta(minutes=15)` in `run_assignments()` — minimum gap between consecutive haulouts per operator
 - **Haulout offset**: Search for `timedelta(minutes=50)` — this is contractual, don't change it
+- **Shift-end cutoff**: Operators won't be assigned flights with haulouts at or after their shift ends (e.g., shift 1 operators won't get flights after 2:00 PM)
+- **Breaks**: Not enforced by the system — operators self-manage breaks by skipping assigned flights
 
 ### Change schedule timing
 Edit `.github/workflows/flight-assignments.yml` and update the `cron` expressions.
@@ -99,4 +100,3 @@ Go to the repo's **Actions** tab → **ATL Flight Assignments** → **Run workfl
 - GitHub Actions cron can have up to ~5 minutes of delay — this is normal
 - The free tier of GitHub Actions gives you 2,000 minutes/month. This automation uses ~4 min/day = ~80 min/month, well within limits
 - If you need to stop the automation temporarily, go to Actions → click the workflow → three dots menu → **Disable workflow**
-
