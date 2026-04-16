@@ -25,9 +25,6 @@ SHIFT1_END = "2:00 PM"
 SHIFT2_START = "2:00 PM"
 SHIFT2_END = "10:00 PM"
 
-SHIFT1_BREAKS = [("7:30 AM", "8:30 AM"), ("9:30 AM", "10:30 AM"), ("11:00 AM", "12:00 PM")]
-SHIFT2_BREAKS = [("4:00 PM", "5:00 PM"), ("5:30 PM", "6:30 PM"), ("7:00 PM", "8:00 PM")]
-
 # Gate filter: T gates + A01–A18 only
 GATE_PATTERN = re.compile(r"^(T\d+[A-Z]?|A(0[1-9]|1[0-8])[A-Z]?)$")
 
@@ -143,31 +140,22 @@ def get_todays_operators(roster):
     if NOW < shift1_end_dt:
         shift_num = 1
         shift_key = "shift1"
-        breaks = SHIFT1_BREAKS
     else:
         shift_num = 2
         shift_key = "shift2"
-        breaks = SHIFT2_BREAKS
 
     raw_ops = day_data.get(shift_key, [])
     operators = []
-    for i, op in enumerate(raw_ops):
+    for op in raw_ops:
         # Skip Route 1 operators
         role = op.get("role", "")
         if "route 1" in role.lower():
             continue
 
-        # Assign staggered breaks
-        break_idx = min(i, len(breaks) - 1)
-        b_start, b_end = breaks[break_idx]
-
         operators.append({
             "name": op["name"],
             "role": role,
-            "break_start": b_start,
-            "break_end": b_end,
-            "break_start_dt": parse_time(b_start),
-            "break_end_dt": parse_time(b_end),
+            "shift_end_dt": parse_time(SHIFT1_END if shift_num == 1 else SHIFT2_END),
             "next_avail": parse_time(SHIFT1_START if shift_num == 1 else SHIFT2_START),
             "flights": [],
             "flight_count": 0,
@@ -212,9 +200,8 @@ def run_assignments(flights, operators, previous_flights):
     Assign flights to operators using round-robin with constraints:
     - Haulout = departure - 50 min (contractual, never adjust)
     - Only future haulout times
-    - 20-min spacing between consecutive haulouts per operator
+    - 15-min spacing between consecutive haulouts per operator
     - No haulouts at or after 10 PM
-    - Operators cannot start haulout during break window
     """
     cutoff_10pm = parse_time("10:00 PM")
 
@@ -244,7 +231,8 @@ def run_assignments(flights, operators, previous_flights):
         for op in operators:
             if op["next_avail"] > haulout:
                 continue
-            if op["break_start_dt"] <= haulout < op["break_end_dt"]:
+            # Don't assign flights past operator's shift end
+            if haulout >= op["shift_end_dt"]:
                 continue
             candidates.append(op)
 
@@ -258,11 +246,7 @@ def run_assignments(flights, operators, previous_flights):
 
         chosen["flights"].append(fl)
         chosen["flight_count"] += 1
-        chosen["next_avail"] = haulout + timedelta(minutes=20)
-
-        # If next_avail falls during break, push to break end
-        if chosen["break_start_dt"] <= chosen["next_avail"] < chosen["break_end_dt"]:
-            chosen["next_avail"] = chosen["break_end_dt"]
+        chosen["next_avail"] = haulout + timedelta(minutes=15)
 
     return actionable, unassigned
 
@@ -290,8 +274,8 @@ def verify(operators, cutoff_10pm):
                 errors.append(f"Haulout mismatch: {op['name']} {fl['al_cde']}{fl['flt_num']}")
             if fl["haulout_dt"] <= NOW:
                 errors.append(f"Past haulout: {op['name']} {fl['al_cde']}{fl['flt_num']}")
-            if prev_h and (fl["haulout_dt"] - prev_h).total_seconds() < 1200:
-                errors.append(f"Spacing <20m: {op['name']} {fmt_time(prev_h)}→{fmt_time(fl['haulout_dt'])}")
+            if prev_h and (fl["haulout_dt"] - prev_h).total_seconds() < 900:
+                errors.append(f"Spacing <15m: {op['name']} {fmt_time(prev_h)}→{fmt_time(fl['haulout_dt'])}")
             if fl["haulout_dt"] >= cutoff_10pm:
                 errors.append(f">=10PM haulout: {op['name']} {fl['al_cde']}{fl['flt_num']}")
             prev_h = fl["haulout_dt"]
@@ -327,7 +311,7 @@ def format_message(shift_num, operators, actionable, unassigned, total_inscope, 
         lines.append("\u200e")  # Left-to-right mark for spacing
         name_upper = op["name"].upper()
         lines.append(
-            f"*:bust_in_silhouette: {name_upper}* \u2014 {op['role']} | Break: {op['break_start']}\u2013{op['break_end']}"
+            f"*:bust_in_silhouette: {name_upper}* \u2014 {op['role']}"
         )
         if not op["flights"]:
             lines.append("_No upcoming flights_")
